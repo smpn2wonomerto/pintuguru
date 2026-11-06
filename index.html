@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <meta name="apple-mobile-web-app-title" content="PINTU GURU" />
-  <meta name="pg-pwa-versi" content="2" />
+  <meta name="pg-pwa-versi" content="3" />
   <!-- ═════════ akhir blok PWA ═════════ -->
 
   <style>
@@ -70,7 +70,8 @@
 
   <!-- Tombol pasang: HANYA tampil saat layar login terbuka DAN aplikasi belum
        terpasang. Setelah terinstall di HP/laptop, tombol hilang permanen.
-       (Butuh pasangan: Index.html GAS v8.9.1 dengan jembatan pgKabariPembungkus) -->
+       (Butuh pasangan: Index.html + Script.html GAS v8.9.2 dengan jembatan
+       pgKabariPembungkus) -->
   <button id="btnPasang" hidden aria-label="Pasang aplikasi">📲 Pasang aplikasi</button>
 
   <!-- Petunjuk pemasangan untuk iPhone / iPad (Safari tidak mendukung auto-prompt) -->
@@ -91,10 +92,10 @@
       document.getElementById('loader').classList.add('done');
     });
 
-    /* ═══ PWA v2: service worker + tombol pasang (HANYA di layar login) ═══ */
+    /* ═══ PWA v3: service worker + tombol pasang (HANYA di layar login) ═══ */
     (function(){
-      console.log('[PWA] Pembungkus v2 aktif — tombol pasang hanya muncul di layar login');
-      window.PG_PWA_VERSI = 2;   /* cara cek versi: F12 -> console / ketik PG_PWA_VERSI */
+      console.log('[PWA] Pembungkus v3 aktif — tombol pasang hanya muncul di layar login (butuh GAS v8.9.2)');
+      window.PG_PWA_VERSI = 3;   /* cara cek versi: F12 -> console / ketik PG_PWA_VERSI */
 
       var btn   = document.getElementById('btnPasang');
       var cara  = document.getElementById('pgCaraIOS');
@@ -141,14 +142,30 @@
         perbaruiTombol();
       });
 
-      /* 3. Aplikasi (dalam iframe) mengabari keadaannya:
+      /* 3. Aplikasi (di dalam iframe) mengabari keadaannya:
             {pgPintuGuru:'login'} → layar login tampil
-            {pgPintuGuru:'masuk'} → pengguna sudah masuk */
+            {pgPintuGuru:'masuk'} → pengguna sudah masuk
+            Pesan dikirim dari DALAM iframe GAS (bisa dari frame bersarang
+            milik Google), jadi sumber diverifikasi dengan menelusuri rantai
+            parent sampai ketemu iframe aplikasi — bukan sekadar
+            e.source === contentWindow. */
+      function dariAplikasi(win){
+        try{
+          var w = win, i = 0;
+          while (w && i < 8){
+            if (w === frame.contentWindow) return true;   /* dari iframe aplikasi */
+            if (w === window) return false;               /* dari halaman ini sendiri */
+            w = w.parent; i++;
+          }
+        }catch(e){}
+        return false;
+      }
       window.addEventListener('message', function(e){
-        if (!frame || e.source !== frame.contentWindow) return; /* hanya dari aplikasi */
+        if (!frame || !dariAplikasi(e.source)) return; /* hanya dari aplikasi */
         var d = e.data;
-        if (!d || typeof d.pgPintuGuru === 'undefined') return;
+        if (!d || (d.pgPintuGuru !== 'login' && d.pgPintuGuru !== 'masuk')) return;
         diLogin = (d.pgPintuGuru === 'login');
+        console.log('[PWA] GAS melapor:', d.pgPintuGuru, '→ tombol', diLogin ? 'BOLEH tampil' : 'disembunyikan');
         perbaruiTombol();
       });
 
