@@ -67,8 +67,9 @@
     </div>
   </div>
 
-  <!-- Tombol pasang (muncul otomatis di Chrome/Edge/Android saat siap dipasang;
-       di iPhone/iPad tombol ini membuka petunjuk "Tambahkan ke Layar Utama") -->
+  <!-- Tombol pasang: HANYA tampil saat layar login terbuka DAN aplikasi belum
+       terpasang. Setelah terinstall di HP/laptop, tombol hilang permanen.
+       (Butuh pasangan: Index.html GAS v8.9.1 dengan jembatan pgKabariPembungkus) -->
   <button id="btnPasang" hidden aria-label="Pasang aplikasi">📲 Pasang aplikasi</button>
 
   <!-- Petunjuk pemasangan untuk iPhone / iPad (Safari tidak mendukung auto-prompt) -->
@@ -89,16 +90,35 @@
       document.getElementById('loader').classList.add('done');
     });
 
-    /* ═════════ PWA: registrasi service worker + logika tombol pasang ═════════ */
+    /* ═══ PWA: service worker + tombol pasang (HANYA di layar login) ═══ */
     (function(){
       var btn   = document.getElementById('btnPasang');
       var cara  = document.getElementById('pgCaraIOS');
       var tutup = document.getElementById('pgCaraTutup');
-      var deferred = null;
+      var frame = document.getElementById('app');
+      var deferred      = null;
+      var promptSiap    = false;  /* browser sudah melapor: aplikasi siap dipasang */
+      var diLogin       = false;  /* aplikasi sedang menampilkan layar login */
 
+      /* iPhone/iPad: Safari tidak mengirim beforeinstallprompt */
+      var iOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+      /* Sudah terpasang? → tombol TIDAK PERNAH muncul lagi.
+         Dicatat permanen di perangkat (localStorage) + deteksi mode standalone. */
+      var tandaiTerpasang = false;
+      try{ tandaiTerpasang = localStorage.getItem('pgSudahTerpasang') === '1'; }catch(e){}
       function sudahTerpasang(){
-        return window.matchMedia('(display-mode: standalone)').matches ||
+        return tandaiTerpasang ||
+               window.matchMedia('(display-mode: standalone)').matches ||
                window.navigator.standalone === true;
+      }
+
+      function perbaruiTombol(){
+        if (sudahTerpasang() || !diLogin){ btn.hidden = true; return; }
+        if (!promptSiap && !iOS){ btn.hidden = true; return; }
+        btn.innerHTML = iOS ? '📲 Tambah ke Layar Utama' : '📲 Pasang aplikasi';
+        btn.hidden = false;
       }
 
       /* 1. Daftarkan service worker (syarat wajib agar bisa dipasang) */
@@ -108,24 +128,25 @@
         });
       }
 
-      /* 2. Chrome/Edge/Android: tampilkan tombol saat browser mengizinkan */
+      /* 2. Chrome/Edge/Android: browser melapor aplikasi siap dipasang.
+            Tombol belum tampil — menunggu konfirmasi "sedang di layar login". */
       window.addEventListener('beforeinstallprompt', function(e){
         e.preventDefault();
         deferred = e;
-        if (!sudahTerpasang()){
-          btn.innerHTML = '📲 Pasang aplikasi';
-          btn.hidden = false;
-        }
+        promptSiap = true;
+        perbaruiTombol();
       });
 
-      /* 3. iPhone/iPad: Safari tidak mengirim beforeinstallprompt —
-            tampilkan tombol yang membuka petunjuk manual */
-      var iOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
-                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      if (iOS && !sudahTerpasang()){
-        btn.innerHTML = '📲 Tambah ke Layar Utama';
-        btn.hidden = false;
-      }
+      /* 3. Aplikasi (dalam iframe) mengabari keadaannya:
+            {pgPintuGuru:'login'} → layar login tampil
+            {pgPintuGuru:'masuk'} → pengguna sudah masuk */
+      window.addEventListener('message', function(e){
+        if (!frame || e.source !== frame.contentWindow) return; /* hanya dari aplikasi */
+        var d = e.data;
+        if (!d || typeof d.pgPintuGuru === 'undefined') return;
+        diLogin = (d.pgPintuGuru === 'login');
+        perbaruiTombol();
+      });
 
       btn.addEventListener('click', function(){
         if (deferred){
@@ -144,8 +165,14 @@
       tutup.addEventListener('click', function(){ cara.hidden = true; });
       cara.addEventListener('click', function(e){ if (e.target === cara) cara.hidden = true; });
 
-      window.addEventListener('appinstalled', function(){ btn.hidden = true; });
-      if (sudahTerpasang()) btn.hidden = true;
+      /* 4. Selesai dipasang → hilang dan TIDAK muncul lagi selamanya */
+      window.addEventListener('appinstalled', function(){
+        tandaiTerpasang = true;
+        try{ localStorage.setItem('pgSudahTerpasang','1'); }catch(e){}
+        btn.hidden = true;
+      });
+
+      perbaruiTombol();
     })();
   </script>
 </body>
