@@ -1,16 +1,23 @@
 /* ============================================================
-   PINTU GURU — Service Worker pembungkus (GitHub Pages)
+   PINTU GURU — Service Worker pembungkus (GitHub Pages) — v3
    ------------------------------------------------------------
    Tugasnya hanya dua:
    1. Memenuhi syarat "bisa dipasang" (kriteria PWA Chrome/Edge).
    2. Menampilkan halaman offline yang rapi saat koneksi terputus.
+
+   v3: nama cache dinaikkan (pintu-guru-shell-v3) supaya shell
+   pembungkus v4 (tanpa tombol, tawaran via toast) langsung
+   menggantikan shell lama di semua perangkat.
+   v2: navigasi selalu ambil LANGSUNG dari jaringan (cache:'reload')
+   — pembaruan index.html pembungkus langsung terpakai, tidak
+   ditahan cache browser/CDN.
 
    Data absensi / nilai / jurnal TIDAK pernah disimpan di sini —
    semuanya selalu diambil langsung dari server Google Apps
    Script supaya tetap akurat dan terbaru.
    ============================================================ */
 
-const CACHE = 'pintu-guru-shell-v1';
+const CACHE = 'pintu-guru-shell-v3';
 const SHELL = [
   './',
   './index.html',
@@ -43,8 +50,8 @@ self.addEventListener('activate', (event) => {
 /* Fetch:
    - Permintaan lintas domain (iframe Google Apps Script) → dibiarkan
      lewat normal, TIDAK disentuh sama sekali.
-   - Navigasi halaman pembungkus → coba jaringan dulu; kalau gagal
-     (offline), tampilkan offline.html.
+   - Navigasi → SELALU ambil dari jaringan (cache:'reload'); kalau
+     gagal (offline), tampilkan offline.html.
    - Ikon / aset pembungkus → ambil dari cache bila sudah ada. */
 self.addEventListener('fetch', (event) => {
   let url;
@@ -53,7 +60,7 @@ self.addEventListener('fetch', (event) => {
 
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: 'reload' })
         .then((res) => {
           const salin = res.clone();
           caches.open(CACHE)

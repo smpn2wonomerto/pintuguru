@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <meta name="apple-mobile-web-app-title" content="PINTU GURU" />
-  <meta name="pg-pwa-versi" content="3" />
+  <meta name="pg-pwa-versi" content="4" />
   <!-- ═════════ akhir blok PWA ═════════ -->
 
   <style>
@@ -33,15 +33,22 @@
     #loader .dot:nth-child(3){animation-delay:-.3s}
     @keyframes l{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
 
-    /* ═══ PWA: tombol pasang + petunjuk iPhone/iPad ═══ */
-    #btnPasang{position:fixed;right:16px;bottom:18px;z-index:99990;
-      display:flex;align-items:center;gap:8px;border:0;border-radius:999px;
-      padding:12px 18px;font-size:14px;font-weight:600;font-family:inherit;
-      background:#6366f1;color:#fff;box-shadow:0 10px 30px rgba(2,6,23,.55);
-      cursor:pointer}
-    #btnPasang:active{transform:scale(.97)}
-    /* di HP tombol dinaikkan supaya tidak menutupi bottom nav bar di dalam aplikasi */
-    @media (max-width:760px){ #btnPasang{bottom:88px} }
+    /* ═══ PWA v4: TANPA tombol — tawaran pasang lewat TOAST ═══
+       Toast muncul sekali per sesi, ketuk untuk memasang, menutup sendiri
+       ±12 detik, dan TIDAK PERNAH muncul bila aplikasi sudah terpasang. */
+    #pgToastPwa{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;
+      z-index:99990;display:flex;align-items:center;gap:10px;max-width:92vw;
+      background:#0f172a;color:#fff;padding:12px 14px;border-radius:14px;
+      font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:13.5px;
+      line-height:1.45;box-shadow:0 10px 30px rgba(2,6,23,.55);cursor:pointer;
+      border:1px solid #334155}
+    #pgToastPwa[hidden]{display:none}
+    #pgToastPwa:active{transform:translateX(-50%) scale(.98)}
+    @media (max-width:760px){ #pgToastPwa{bottom:88px} } /* di atas bottom nav aplikasi */
+    #pgToastTutup{border:0;background:transparent;color:#94a3b8;font-size:15px;
+      cursor:pointer;padding:2px 4px;line-height:1}
+    #pgToastTutup:hover{color:#e2e8f0}
+
     #pgCaraIOS{position:fixed;inset:0;z-index:99995;display:flex;
       align-items:center;justify-content:center;background:rgba(2,6,23,.72);padding:20px}
     #pgCaraIOS[hidden]{display:none}
@@ -68,11 +75,13 @@
     </div>
   </div>
 
-  <!-- Tombol pasang: HANYA tampil saat layar login terbuka DAN aplikasi belum
-       terpasang. Setelah terinstall di HP/laptop, tombol hilang permanen.
-       (Butuh pasangan: Index.html + Script.html GAS v8.9.2 dengan jembatan
-       pgKabariPembungkus) -->
-  <button id="btnPasang" hidden aria-label="Pasang aplikasi">📲 Pasang aplikasi</button>
+  <!-- Toast tawaran pemasangan: muncul SEKALI per sesi, hanya bila aplikasi
+       BELUM terpasang dan perangkat bisa memasang. Ketuk = pasang.
+       Sudah terpasang → tidak pernah muncul lagi. -->
+  <div id="pgToastPwa" hidden role="status" aria-label="Tawaran pemasangan aplikasi">
+    <span id="pgToastTeks"></span>
+    <button id="pgToastTutup" type="button" aria-label="Tutup">✕</button>
+  </div>
 
   <!-- Petunjuk pemasangan untuk iPhone / iPad (Safari tidak mendukung auto-prompt) -->
   <div id="pgCaraIOS" hidden>
@@ -92,38 +101,54 @@
       document.getElementById('loader').classList.add('done');
     });
 
-    /* ═══ PWA v3: service worker + tombol pasang (HANYA di layar login) ═══ */
+    /* ═══ PWA v4: service worker + toast tawaran pasang (TANPA tombol) ═══ */
     (function(){
-      console.log('[PWA] Pembungkus v3 aktif — tombol pasang hanya muncul di layar login (butuh GAS v8.9.2)');
-      window.PG_PWA_VERSI = 3;   /* cara cek versi: F12 -> console / ketik PG_PWA_VERSI */
+      console.log('[PWA] Pembungkus v4 aktif — tanpa tombol: tawaran pasang lewat toast, sekali per sesi, hilang permanen bila terpasang');
+      window.PG_PWA_VERSI = 4;   /* cara cek versi: F12 -> console / ketik PG_PWA_VERSI */
 
-      var btn   = document.getElementById('btnPasang');
-      var cara  = document.getElementById('pgCaraIOS');
-      var tutup = document.getElementById('pgCaraTutup');
-      var frame = document.getElementById('app');
-      var deferred      = null;
-      var promptSiap    = false;  /* browser sudah melapor: aplikasi siap dipasang */
-      var diLogin       = false;  /* aplikasi sedang menampilkan layar login */
+      var toast  = document.getElementById('pgToastPwa');
+      var teks   = document.getElementById('pgToastTeks');
+      var tutup  = document.getElementById('pgToastTutup');
+      var cara   = document.getElementById('pgCaraIOS');
+      var tutupC = document.getElementById('pgCaraTutup');
+      var frame  = document.getElementById('app');
+      var deferred   = null;   /* browser melapor: aplikasi siap dipasang */
+      var appSiap    = false;  /* aplikasi GAS sudah melapor (login/masuk) */
+      var tenDetik   = false;  /* cadangan waktu: 10 detik berlalu */
+      var timerTutup = null;
 
       /* iPhone/iPad: Safari tidak mengirim beforeinstallprompt */
       var iOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-      /* Sudah terpasang? → tombol TIDAK PERNAH muncul lagi.
+      /* Sudah terpasang? → toast TIDAK PERNAH muncul lagi.
          Dicatat permanen di perangkat (localStorage) + deteksi mode standalone. */
-      var tandaiTerpasang = false;
-      try{ tandaiTerpasang = localStorage.getItem('pgSudahTerpasang') === '1'; }catch(e){}
       function sudahTerpasang(){
-        return tandaiTerpasang ||
+        var tanda = false;
+        try{ tanda = localStorage.getItem('pgSudahTerpasang') === '1'; }catch(e){}
+        return tanda ||
                window.matchMedia('(display-mode: standalone)').matches ||
                window.navigator.standalone === true;
       }
 
-      function perbaruiTombol(){
-        if (sudahTerpasang() || !diLogin){ btn.hidden = true; return; }
-        if (!promptSiap && !iOS){ btn.hidden = true; return; }
-        btn.innerHTML = iOS ? '📲 Tambah ke Layar Utama' : '📲 Pasang aplikasi';
-        btn.hidden = false;
+      function sembunyikanToast(){
+        if (timerTutup){ clearTimeout(timerTutup); timerTutup = null; }
+        toast.hidden = true;
+      }
+
+      /* Tawarkan pemasangan lewat toast — paling banyak SEKALI per sesi. */
+      function mungkinTawar(){
+        if (sudahTerpasang()) return;                 /* sudah terpasang → diam */
+        try{ if (sessionStorage.getItem('pgTawarSesi') === '1') return; }catch(e){}
+        if (!deferred && !iOS) return;                /* perangkat tak bisa memasang */
+        if (!appSiap && !tenDetik) return;            /* tunggu aplikasi termuat dulu */
+        try{ sessionStorage.setItem('pgTawarSesi','1'); }catch(e){}
+        teks.innerHTML = iOS
+          ? '📲 iPhone/iPad: tekan <b>Bagikan</b> lalu <b>“Tambahkan ke Layar Utama”</b> — ketuk di sini untuk petunjuk'
+          : '📲 Aplikasi PINTU GURU bisa dipasang di perangkat ini — <b>ketuk di sini</b> untuk memasang';
+        toast.hidden = false;
+        if (timerTutup) clearTimeout(timerTutup);
+        timerTutup = setTimeout(sembunyikanToast, 12000);   /* menutup sendiri ±12 dtk */
       }
 
       /* 1. Daftarkan service worker (syarat wajib agar bisa dipasang) */
@@ -133,22 +158,17 @@
         });
       }
 
-      /* 2. Chrome/Edge/Android: browser melapor aplikasi siap dipasang.
-            Tombol belum tampil — menunggu konfirmasi "sedang di layar login". */
+      /* 2. Chrome/Edge/Android: browser melapor aplikasi siap dipasang */
       window.addEventListener('beforeinstallprompt', function(e){
         e.preventDefault();
         deferred = e;
-        promptSiap = true;
-        perbaruiTombol();
+        mungkinTawar();
       });
 
-      /* 3. Aplikasi (di dalam iframe) mengabari keadaannya:
-            {pgPintuGuru:'login'} → layar login tampil
-            {pgPintuGuru:'masuk'} → pengguna sudah masuk
-            Pesan dikirim dari DALAM iframe GAS (bisa dari frame bersarang
-            milik Google), jadi sumber diverifikasi dengan menelusuri rantai
-            parent sampai ketemu iframe aplikasi — bukan sekadar
-            e.source === contentWindow. */
+      /* 3. Aplikasi (di dalam iframe) mengabari keadaannya — dipakai hanya
+            untuk MENUNDTA waktu tawaran sampai aplikasi benar-benar termuat.
+            Sumber diverifikasi dengan menelusuri rantai parent sampai ketemu
+            iframe aplikasi (pesan palsu dari halaman sendiri diabaikan). */
       function dariAplikasi(win){
         try{
           var w = win, i = 0;
@@ -161,39 +181,48 @@
         return false;
       }
       window.addEventListener('message', function(e){
-        if (!frame || !dariAplikasi(e.source)) return; /* hanya dari aplikasi */
+        if (!frame || !dariAplikasi(e.source)) return;
         var d = e.data;
         if (!d || (d.pgPintuGuru !== 'login' && d.pgPintuGuru !== 'masuk')) return;
-        diLogin = (d.pgPintuGuru === 'login');
-        console.log('[PWA] GAS melapor:', d.pgPintuGuru, '→ tombol', diLogin ? 'BOLEH tampil' : 'disembunyikan');
-        perbaruiTombol();
+        appSiap = true;
+        mungkinTawar();
       });
 
-      btn.addEventListener('click', function(){
-        if (deferred){
-          btn.disabled = true;
-          deferred.prompt();
-          deferred.userChoice.then(function(){
-            deferred = null;
-            btn.hidden = true;
-            btn.disabled = false;
-          });
-        } else {
-          cara.hidden = false; /* petunjuk manual (iOS / browser tanpa prompt) */
-        }
+      /* 4. Ketuk toast → pasang (atau buka petunjuk iPhone) */
+      toast.addEventListener('click', function(){
+        if (iOS || !deferred){ cara.hidden = false; sembunyikanToast(); return; }
+        var d = deferred;
+        sembunyikanToast();
+        d.prompt();
+        d.userChoice.then(function(){ d = null; });
+      });
+      tutup.addEventListener('click', function(e){
+        e.stopPropagation();
+        sembunyikanToast();
       });
 
-      tutup.addEventListener('click', function(){ cara.hidden = true; });
+      tutupC.addEventListener('click', function(){ cara.hidden = true; });
       cara.addEventListener('click', function(e){ if (e.target === cara) cara.hidden = true; });
 
-      /* 4. Selesai dipasang → hilang dan TIDAK muncul lagi selamanya */
+      /* 5. Selesai dipasang → catat permanen; toast & tawaran berhenti selamanya */
       window.addEventListener('appinstalled', function(){
-        tandaiTerpasang = true;
         try{ localStorage.setItem('pgSudahTerpasang','1'); }catch(e){}
-        btn.hidden = true;
+        sembunyikanToast();
       });
 
-      perbaruiTombol();
+      /* Cadangan waktu: bila pesan dari aplikasi tak kunjung datang,
+         tawaran tetap muncul setelah 10 detik. */
+      setTimeout(function(){ tenDetik = true; mungkinTawar(); }, 10000);
+
+      /* Hook kecil untuk diagnosa/uji (tidak mengubah perilaku): */
+      window.__pgPwaUji = {
+        tawar: mungkinTawar,
+        status: function(){
+          return { versi: window.PG_PWA_VERSI, terpasang: sudahTerpasang(),
+                   deferred: !!deferred, appSiap: appSiap, iOS: iOS,
+                   toastTampil: !toast.hidden };
+        }
+      };
     })();
   </script>
 </body>
