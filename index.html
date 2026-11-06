@@ -14,6 +14,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <meta name="apple-mobile-web-app-title" content="PINTU GURU" />
+  <meta name="pg-pwa-versi" content="2" />
   <!-- ═════════ akhir blok PWA ═════════ -->
 
   <style>
@@ -90,8 +91,11 @@
       document.getElementById('loader').classList.add('done');
     });
 
-    /* ═══ PWA: service worker + tombol pasang (HANYA di layar login) ═══ */
+    /* ═══ PWA v2: service worker + tombol pasang (HANYA di layar login) ═══ */
     (function(){
+      console.log('[PWA] Pembungkus v2 aktif — tombol pasang hanya muncul di layar login');
+      window.PG_PWA_VERSI = 2;   /* cara cek versi: F12 -> console / ketik PG_PWA_VERSI */
+
       var btn   = document.getElementById('btnPasang');
       var cara  = document.getElementById('pgCaraIOS');
       var tutup = document.getElementById('pgCaraTutup');
