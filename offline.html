@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>PINTU GURU — Sedang Offline</title>
+  <style>
+    html,body{margin:0;height:100%}
+    body{display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(135deg,#0f172a,#1e1b4b);color:#e2e8f0;
+      font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+      text-align:center;padding:24px;box-sizing:border-box}
+    .kartu{max-width:420px}
+    .logo{width:84px;height:84px;border-radius:22px;background:rgba(129,140,248,.15);
+      display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:40px}
+    h1{font-size:20px;margin:0 0 8px;color:#a5b4fc;letter-spacing:.06em}
+    p{font-size:14px;line-height:1.7;color:#94a3b8;margin:0 0 22px}
+    button{border:0;border-radius:999px;padding:12px 30px;font-size:14px;font-weight:600;
+      background:#6366f1;color:#fff;cursor:pointer}
+    button:active{transform:scale(.97)}
+  </style>
+</head>
+<body>
+  <div class="kartu">
+    <div class="logo">🚪</div>
+    <h1>KONEKSI TERPUTUS</h1>
+    <p>PINTU GURU membutuhkan internet untuk mengambil data absensi, nilai, dan jurnal terbaru.<br />Periksa koneksi Anda, lalu coba lagi.</p>
+    <button onclick="location.reload()">Coba Lagi</button>
+  </div>
+</body>
+</html>
