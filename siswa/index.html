@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#1d4ed8" />
+  <title>Portal Siswa — SMP Negeri 2 Wonomerto</title>
+  <meta name="description" content="Portal Siswa SMP Negeri 2 Wonomerto: Kartu QR absensi, rekap kehadiran, dan riwayat absensi. Login cukup dengan NISN." />
+
+  <!-- Ikon & pratinjau rapi saat link dibagikan lewat WhatsApp / sosial media -->
+  <link rel="icon" href="https://www.image2url.com/r2/default/images/1791341222004-8d4bab53-e9c3-42a4-9f3a-e3dffff99157.jpg" />
+  <meta property="og:title" content="Portal Siswa — SMP Negeri 2 Wonomerto" />
+  <meta property="og:description" content="Kartu QR absensi & rekap kehadiran siswa. Login cukup dengan NISN." />
+  <meta property="og:image" content="https://www.image2url.com/r2/default/images/1791341222004-8d4bab53-e9c3-42a4-9f3a-e3dffff99157.jpg" />
+  <meta property="og:type" content="website" />
+
+  <!-- Terasa seperti aplikasi saat dibuka/dipasang di HP -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-title" content="Portal Siswa" />
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       ⚙ PENGATURAN — hanya SATU baris yang perlu diubah:
+       Kalau URL Web App PINTU GURU berubah, ganti URL di bawah
+       (tetap akhiri dengan ?page=siswa). Kalau tidak berubah, BIARKAN.
+       ═══════════════════════════════════════════════════════════════ -->
+  <script>
+    var URL_PORTAL =
+      "https://script.google.com/macros/s/AKfycbxIL2AYrMhqYN3imHX3Hl7CWHqpjqyISH_2JKJDfEOTaJVNbknijC99jOpJ6QryQO-XJQ/exec?page=siswa";
+  </script>
+
+  <style>
+    html,body{margin:0;padding:0;width:100%;height:100%;background:#0b1c3f;overflow:hidden;
+      font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif}
+    .wrap{width:100%;height:100dvh;overflow:hidden;position:relative}
+    iframe{display:block;width:100%;height:100%;border:none}
+
+    /* ══ Layar loading — identitas sekolah + animasi halus ══ */
+    #loader{position:absolute;inset:0;display:flex;flex-direction:column;gap:10px;
+      align-items:center;justify-content:center;text-align:center;padding:20px;
+      background:linear-gradient(150deg,#0b1c3f 0%,#123a8f 55%,#1d4ed8 100%);
+      transition:opacity .45s}
+    #loader.done{opacity:0;pointer-events:none}
+    #loader .logo{width:84px;height:84px;border-radius:50%;background:#fff;object-fit:contain;
+      padding:6px;box-shadow:0 12px 32px rgba(2,6,23,.45);animation:apung 2.6s ease-in-out infinite}
+    #loader .logo.gagal{display:none}
+    @keyframes apung{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+    #loader .nm{color:#fff;font-size:21px;font-weight:800;letter-spacing:.14em;margin-top:12px}
+    #loader .al{color:#bfdbfe;font-size:12.5px;letter-spacing:.28em;text-transform:uppercase}
+    #loader .garis{width:56px;height:3px;border-radius:99px;background:#f59e0b;margin:10px auto 2px}
+    #loader .dots{display:flex;gap:9px;margin-top:16px}
+    #loader .dot{width:10px;height:10px;border-radius:50%;background:#93c5fd;
+      animation:l 1.1s infinite ease-in-out}
+    #loader .dot:nth-child(2){animation-delay:-.15s}
+    #loader .dot:nth-child(3){animation-delay:-.3s}
+    @keyframes l{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+    #loader .ket{color:#93c5fd;font-size:12.5px;margin-top:6px;letter-spacing:.06em}
+
+    /* ══ Layar bantuan — tampil hanya jika portal lambat / gagal dimuat ══ */
+    #gagal{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(150deg,#0b1c3f,#123a8f);padding:22px}
+    #gagal[hidden]{display:none}
+    .kartu{max-width:380px;width:100%;background:#fff;border-radius:18px;padding:26px 22px;
+      text-align:center;box-shadow:0 18px 44px rgba(2,6,23,.5)}
+    .kartu h3{margin:0 0 8px;font-size:17px;color:#1e3a8a}
+    .kartu p{margin:0 0 18px;font-size:13.5px;color:#475569;line-height:1.65}
+    .kartu .btn{display:block;width:100%;border:0;border-radius:12px;padding:12px;
+      font-size:14.5px;font-weight:700;cursor:pointer;text-decoration:none}
+    .kartu .btn.utama{background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;margin-bottom:10px}
+    .kartu .btn.ghost{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+    .kartu small{display:block;margin-top:14px;color:#94a3b8;font-size:11px;line-height:1.5}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <iframe id="app" title="Portal Siswa"></iframe>
+
+    <div id="loader">
+      <img class="logo" alt="Logo sekolah"
+        src="https://www.image2url.com/r2/default/images/1791341222004-8d4bab53-e9c3-42a4-9f3a-e3dffff99157.jpg" />
+      <div class="nm">PORTAL SISWA</div>
+      <div class="al">SMP Negeri 2 Wonomerto</div>
+      <div class="garis"></div>
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div class="ket">Menyiapkan portal…</div>
+    </div>
+
+    <div id="gagal" hidden>
+      <div class="kartu">
+        <h3>Portal belum muncul?</h3>
+        <p>Koneksi ke server sedang lambat.<br>
+           Coba muat ulang, atau buka portal lewat tautan langsung di bawah.</p>
+        <a class="btn utama" id="btnLangsung" href="#" target="_blank" rel="noopener">🔗 Buka Tautan Langsung</a>
+        <button class="btn ghost" id="btnCoba" type="button">🔄 Muat Ulang</button>
+        <small>Tips: simpan halaman ini ke Layar Utama HP agar bisa dibuka cepat setiap hari.</small>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('app').src = URL_PORTAL;
+    document.getElementById('btnLangsung').href = URL_PORTAL;
+
+    var loader = document.getElementById('loader');
+    var gagal  = document.getElementById('gagal');
+    var frame  = document.getElementById('app');
+    var sudah  = false;
+
+    frame.addEventListener('load', function(){
+      sudah = true;
+      loader.classList.add('done');   /* sembunyikan layar loading */
+    });
+
+    /* Portal lambat > 15 detik → tampilkan kartu bantuan (loader tetap menunggu) */
+    setTimeout(function(){
+      if (!sudah){ gagal.hidden = false; document.getElementById('loader').classList.add('done'); }
+    }, 15000);
+
+    document.getElementById('btnCoba').addEventListener('click', function(){
+      gagal.hidden = true; loader.classList.remove('done'); sudah = false;
+      frame.src = URL_PORTAL;                     /* muat ulang portal */
+      setTimeout(function(){ if (!sudah){ gagal.hidden = false; loader.classList.add('done'); } }, 15000);
+    });
+
+    /* Logo gagal dimuat (misal offline) → sembunyikan, layar tetap rapi */
+    document.querySelector('#loader .logo').addEventListener('error', function(){
+      this.classList.add('gagal');
+    });
+
+    console.log('[PG] Pembungkus GitHub Portal Siswa aktif — ' + URL_PORTAL);
+  </script>
+</body>
+</html>
